@@ -1,22 +1,43 @@
 /* =====================================================
    PAWS FOR PEACE — Firebase Configuration
    =====================================================
-   DEV_BYPASS = true  → No Firebase needed. Click "Sign in"
-                         and you're instantly admin. All data
-                         is saved in your browser (localStorage).
+   DEV_BYPASS = true  → No Firebase needed for the database.
+                         Google sign-in shows a mock user.
+                         All data is saved in localStorage.
 
    DEV_BYPASS = false → Real Firebase mode. Fill in your
-                         firebaseConfig and ADMIN_EMAILS below.
+                         firebaseConfig below.
+
+   Admin login always uses the USERNAME / PASSWORD below
+   (independent of Firebase — works on GitHub Pages).
    ===================================================== */
 
 const DEV_BYPASS = true;   // ← Set to false once Firebase is ready
 
-/* ─── ADMIN EMAILS ─────────────────────────────────
-   Your Gmail address(es) — used in real Firebase mode
+/* ─── ADMIN CREDENTIALS ─────────────────────────────
+   Username + password for the /admin.html login form.
+   Change these if you ever need to update them.
+   ─────────────────────────────────────────────────── */
+const ADMIN_USERNAME = "Pawforpeace";
+const ADMIN_PASSWORD = "Verso@111";
+
+/* ─── FIREBASE ADMIN EMAILS ─────────────────────────
+   Only used in real Firebase mode (DEV_BYPASS = false)
    ─────────────────────────────────────────────────── */
 const ADMIN_EMAILS = [
   "your-admin@gmail.com"   // ← replace with your email
 ];
+
+/* ─── ADMIN SESSION HELPERS ─────────────────────────
+   Keeps the admin logged in across page refreshes
+   using sessionStorage (cleared when tab is closed).
+   ─────────────────────────────────────────────────── */
+function checkAdminCredentials(u, p) {
+  return u === ADMIN_USERNAME && p === ADMIN_PASSWORD;
+}
+function setAdminSession()   { sessionStorage.setItem('pfp_admin_ok', '1'); }
+function clearAdminSession() { sessionStorage.removeItem('pfp_admin_ok'); }
+function hasAdminSession()   { return sessionStorage.getItem('pfp_admin_ok') === '1'; }
 
 /* ─── SITE DEFAULTS ─────────────────────────────────
    Shown before Firestore content loads
@@ -220,12 +241,12 @@ if (DEV_BYPASS) {
     }
   };
 
-  /* ── Mock Auth (instant sign-in as admin) ── */
-  const MOCK_ADMIN = {
-    uid:         'dev-admin-001',
-    displayName: 'Dev Admin',
-    email:       ADMIN_EMAILS[0] || 'admin@pawsforpeace.com',
-    photoURL:    'https://ui-avatars.com/api/?name=Dev+Admin&background=E07B39&color=fff&bold=true'
+  /* ── Mock regular user (Google sign-in in DEV mode) ── */
+  const MOCK_USER = {
+    uid:         'dev-user-001',
+    displayName: 'Test User',
+    email:       'testuser@example.com',
+    photoURL:    'https://ui-avatars.com/api/?name=Test+User&background=4A3728&color=fff&bold=true'
   };
 
   /* Notify pages once they've loaded their onAuthUpdate function */
@@ -235,11 +256,11 @@ if (DEV_BYPASS) {
 
   /* ── Auth helpers (bypass versions) ── */
   signInGoogle = function() {
-    currentUser = MOCK_ADMIN;
+    currentUser = MOCK_USER;
     setTimeout(() => {
-      if (typeof onAuthUpdate === 'function') onAuthUpdate(MOCK_ADMIN);
+      if (typeof onAuthUpdate === 'function') onAuthUpdate(MOCK_USER);
     }, 0);
-    return Promise.resolve({ user: MOCK_ADMIN });
+    return Promise.resolve({ user: MOCK_USER });
   };
 
   signOutUser = function() {
@@ -293,8 +314,9 @@ if (DEV_BYPASS) {
 /* ════════ SHARED HELPERS (work in both modes) ════════ */
 
 function isAdmin(user) {
+  /* username/password admin session takes priority over everything */
+  if (hasAdminSession()) return true;
   if (!user) return false;
-  if (DEV_BYPASS && user.uid === 'dev-admin-001') return true;
   return ADMIN_EMAILS.includes(user.email);
 }
 
