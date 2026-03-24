@@ -249,14 +249,23 @@ if (DEV_BYPASS) {
     photoURL:    'https://ui-avatars.com/api/?name=Test+User&background=4A3728&color=fff&bold=true'
   };
 
-  /* Notify pages once they've loaded their onAuthUpdate function */
+  /* ── Regular-user session (survives page navigation within the tab) ── */
+  const DEV_USER_KEY = 'pfp_dev_user';
+
+  /* Notify pages once they've loaded their onAuthUpdate function.
+     Restore any previously signed-in regular user from sessionStorage. */
   setTimeout(() => {
-    if (typeof onAuthUpdate === 'function') onAuthUpdate(null);
+    try {
+      const saved = sessionStorage.getItem(DEV_USER_KEY);
+      currentUser = saved ? JSON.parse(saved) : null;
+    } catch(e) { currentUser = null; }
+    if (typeof onAuthUpdate === 'function') onAuthUpdate(currentUser);
   }, 0);
 
   /* ── Auth helpers (bypass versions) ── */
   signInGoogle = function() {
     currentUser = MOCK_USER;
+    sessionStorage.setItem(DEV_USER_KEY, JSON.stringify(MOCK_USER));
     setTimeout(() => {
       if (typeof onAuthUpdate === 'function') onAuthUpdate(MOCK_USER);
     }, 0);
@@ -265,6 +274,7 @@ if (DEV_BYPASS) {
 
   signOutUser = function() {
     currentUser = null;
+    sessionStorage.removeItem(DEV_USER_KEY);
     setTimeout(() => {
       if (typeof onAuthUpdate === 'function') onAuthUpdate(null);
     }, 0);
