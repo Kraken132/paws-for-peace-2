@@ -194,6 +194,9 @@
       </svg>
       Continue with Google
     </button>
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid #f0ebe4;">
+      <a href="admin.html" style="color:var(--primary);font-size:0.88rem;font-weight:600;text-decoration:none;">🔒 Admin login →</a>
+    </div>
   </div>
 </div>
 
@@ -232,12 +235,15 @@
     const adminLink  = document.getElementById('nav-admin-link');
     const mobileAdm  = document.getElementById('mobile-admin-link');
     const body       = document.body;
+    const adminSess  = hasAdminSession();
 
-    if (user) {
+    if (user || adminSess) {
       loginBtn.style.display  = 'none';
       userInfo.style.display  = 'flex';
-      document.getElementById('nav-avatar').src = user.photoURL || '';
-      document.getElementById('nav-username').textContent = user.displayName?.split(' ')[0] || 'User';
+      document.getElementById('nav-avatar').src = adminSess
+        ? 'https://ui-avatars.com/api/?name=Admin&background=E07B39&color=fff&bold=true'
+        : (user.photoURL || '');
+      document.getElementById('nav-username').textContent = adminSess ? 'Admin' : (user.displayName?.split(' ')[0] || 'User');
     } else {
       loginBtn.style.display  = 'flex';
       userInfo.style.display  = 'none';
@@ -286,6 +292,7 @@
   }
 
   async function handleSignOut() {
+    clearAdminSession();
     await signOutUser();
     showToast('Signed out successfully.', 'info');
   }

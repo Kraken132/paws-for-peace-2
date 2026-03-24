@@ -250,6 +250,9 @@
       </svg>
       Continue with Google
     </button>
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid #f0ebe4;">
+      <a href="admin.html" style="color:var(--primary);font-size:0.88rem;font-weight:600;text-decoration:none;">🔒 Admin login →</a>
+    </div>
   </div>
 </div>
 
@@ -274,15 +277,20 @@
     const userInfo  = document.getElementById('nav-user-info');
     const adminLink = document.getElementById('nav-admin-link');
     const mobileAdm = document.getElementById('mobile-admin-link');
+    const adminSess = hasAdminSession();
 
-    if (user) {
+    if (user || adminSess) {
       loginBtn.style.display = 'none';
       userInfo.style.display = 'flex';
-      document.getElementById('nav-avatar').src = user.photoURL || '';
-      document.getElementById('nav-username').textContent = user.displayName?.split(' ')[0] || 'User';
-      // Pre-fill form if logged in
-      if (!document.getElementById('f-name').value)  document.getElementById('f-name').value  = user.displayName || '';
-      if (!document.getElementById('f-email').value) document.getElementById('f-email').value = user.email || '';
+      document.getElementById('nav-avatar').src = adminSess
+        ? 'https://ui-avatars.com/api/?name=Admin&background=E07B39&color=fff&bold=true'
+        : (user.photoURL || '');
+      document.getElementById('nav-username').textContent = adminSess ? 'Admin' : (user.displayName?.split(' ')[0] || 'User');
+      // Pre-fill form only for regular Google users (not admin)
+      if (user && !adminSess) {
+        if (!document.getElementById('f-name').value)  document.getElementById('f-name').value  = user.displayName || '';
+        if (!document.getElementById('f-email').value) document.getElementById('f-email').value = user.email || '';
+      }
     } else {
       loginBtn.style.display = 'flex';
       userInfo.style.display = 'none';
@@ -368,7 +376,7 @@
     catch(e) { showToast('Sign-in failed.', 'error'); }
   }
 
-  async function handleSignOut() { await signOutUser(); showToast('Signed out.', 'info'); }
+  async function handleSignOut() { clearAdminSession(); await signOutUser(); showToast('Signed out.', 'info'); }
 
   document.querySelectorAll('.modal-overlay').forEach(el =>
     el.addEventListener('click', e => { if (e.target === el) el.classList.remove('active'); })
