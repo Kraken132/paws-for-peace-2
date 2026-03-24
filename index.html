@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paws for Peace — Home</title>
+  <meta name="description" content="Paws for Peace — Rescuing dogs in Bangkok. Adopt, don't shop." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Firebase v8 Compat -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+  <style>
+    /* Page-specific extras */
+    .edit-btn-inline {
+      display: none;
+      background: var(--primary);
+      color: var(--white);
+      border: none;
+      border-radius: 50px;
+      padding: 7px 18px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      gap: 6px;
+      align-items: center;
+      transition: var(--transition);
+      margin-top: 14px;
+    }
+    .edit-btn-inline:hover { background: var(--primary-dark); }
+    .admin-logged .edit-btn-inline { display: inline-flex; }
+    .admin-logged .hero-edit-btn { display: flex !important; }
+    .admin-logged .featured-img-overlay { display: flex; }
+    .admin-logged .featured-img-wrap:hover .featured-img-overlay { background: rgba(0,0,0,0.45); }
+    .admin-logged .featured-img-wrap:hover .admin-img-hint { display: flex; }
+
+    .why-text-block { position: relative; }
+    .motto-block { position: relative; text-align: center; }
+    .intro-block { position: relative; }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ NAVIGATION ══════════════ -->
+<nav>
+  <a href="index.html" class="nav-logo">🐾 <span>Paws</span> for Peace</a>
+
+  <ul class="nav-center" id="nav-links">
+    <li><a href="index.html" class="active">Home</a></li>
+    <li><a href="adopt.html">Adopt</a></li>
+    <li><a href="apply.html">Apply</a></li>
+    <li><a href="admin.html" id="nav-admin-link" style="display:none;">Admin</a></li>
+  </ul>
+
+  <div class="nav-right">
+    <div class="user-info-nav" id="nav-user-info">
+      <img class="user-avatar" id="nav-avatar" src="" alt="Avatar" />
+      <span id="nav-username"></span>
+      <button class="btn btn-ghost btn-sm" onclick="handleSignOut()">Sign out</button>
+    </div>
+    <button class="btn btn-primary btn-sm" id="nav-login-btn" onclick="openLoginModal()">
+      Sign in
+    </button>
+    <button class="hamburger" id="hamburger" onclick="toggleMobileMenu()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- Mobile menu -->
+<div class="mobile-menu" id="mobile-menu">
+  <a href="index.html">🏠 Home</a>
+  <a href="adopt.html">🐕 Adopt</a>
+  <a href="apply.html">📋 Apply</a>
+  <a href="admin.html" id="mobile-admin-link" style="display:none;">⚙️ Admin</a>
+</div>
+
+<!-- ══════════════ HERO SECTION ══════════════ -->
+<section class="hero" id="hero-section">
+  <div class="hero-overlay">
+    <h1 id="hero-title">Welcome to <span>Paws for Peace</span></h1>
+    <p id="hero-subtitle">Every rescue dog has a story — be part of their happy ending.</p>
+    <div class="hero-cta">
+      <a href="adopt.html" class="btn btn-primary btn-lg">🐾 Meet Our Dogs</a>
+      <a href="apply.html" class="btn btn-ghost btn-lg">Apply to Adopt</a>
+    </div>
+  </div>
+
+  <!-- Admin: change hero background image -->
+  <button class="btn btn-white btn-sm hero-edit-btn" onclick="triggerHeroUpload()" title="Change hero background image">
+    📸 Change Background
+  </button>
+  <input type="file" id="hero-img-input" accept="image/*" style="display:none" onchange="uploadHeroImage(this)" />
+  <div class="upload-progress" id="hero-upload-progress" style="position:absolute;bottom:70px;right:28px;width:180px;display:none;">
+    <div class="upload-progress-bar" id="hero-progress-bar"></div>
+  </div>
+</section>
+
+<!-- ══════════════ WHY WE HELP ══════════════ -->
+<section class="why-section">
+  <div class="container">
+    <div class="why-grid">
+      <div>
+        <span class="section-label">Our Story</span>
+        <h2 class="section-title" id="why-title">Why We Help</h2>
+        <div class="section-divider"></div>
+        <div class="why-text-block">
+          <p class="section-text" id="why-text">
+            We started Paws for Peace after witnessing countless stray dogs living on the streets of Bangkok — hungry, scared, and alone. Each dog has a soul full of love waiting to be given to the right family.
+            <br /><br />
+            Our group volunteers every weekend, providing food, medical care, and love to rescues before finding them their forever homes. We believe every dog deserves a safe place to sleep and a family who truly cares.
+          </p>
+          <button class="edit-btn-inline" onclick="openEditModal('whyText')">✏️ Edit Text</button>
+        </div>
+      </div>
+      <div class="why-image">
+        <img src="https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=700&q=80" alt="Volunteers helping dogs" id="why-img" />
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ MOTTO ══════════════ -->
+<section class="motto-section">
+  <div class="motto-block">
+    <p class="motto-sub" id="motto-sub" style="margin-bottom:18px;">Give a rescue dog their forever home</p>
+    <div class="motto-text" id="motto-text">Adopt, Don't Shop</div>
+    <button class="edit-btn-inline" style="margin-top:20px;" onclick="openEditModal('motto')">✏️ Edit Motto</button>
+  </div>
+</section>
+
+<!-- ══════════════ FEATURED DOG & INTRO ══════════════ -->
+<section style="background:var(--white);">
+  <div class="featured-section">
+    <!-- Photo with upload for admin -->
+    <div class="featured-img-wrap" onclick="triggerDogUpload()">
+      <img src="https://images.unsplash.com/photo-1558788353-f76d92427f16?w=700&q=80"
+           alt="Featured rescue dog"
+           id="featured-dog-img" />
+      <div class="featured-img-overlay">
+        <div class="admin-img-hint">
+          <span>📸</span>
+          Upload Dog Photo
+        </div>
+      </div>
+    </div>
+    <input type="file" id="dog-img-input" accept="image/*" style="display:none" onchange="uploadDogImage(this)" />
+
+    <!-- Animal Introduction -->
+    <div>
+      <span class="section-label">Our Animals</span>
+      <h2 class="section-title" id="intro-title">Meet Our Rescues</h2>
+      <div class="section-divider"></div>
+      <div class="intro-block">
+        <p class="section-text" id="intro-text">
+          Our rescue dogs come from all walks of life — some were abandoned, some were found injured, and others simply needed a second chance. Each one has been cared for by our dedicated volunteers, vaccinated, and prepared for their new life.
+          <br /><br />
+          Whether you're looking for a playful pup, a gentle companion, or a loyal protector, we have a dog for every type of family. Browse our adoption page and open your heart to one of our beloved rescues.
+        </p>
+        <button class="edit-btn-inline" onclick="openEditModal('intro')">✏️ Edit Introduction</button>
+      </div>
+      <div style="margin-top:28px;">
+        <a href="adopt.html" class="btn btn-primary">🐾 View All Dogs</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ FOOTER ══════════════ -->
+<footer>
+  <p>🐾 &copy; 2026 <strong>Paws for Peace</strong> — Bangkok, Thailand &nbsp;|&nbsp;
+    <a href="https://www.instagram.com/adoptme.bkk" target="_blank">@adoptme.bkk</a>
+  </p>
+</footer>
+
+<!-- ══════════════ LOGIN MODAL ══════════════ -->
+<div class="modal-overlay" id="login-modal">
+  <div class="modal" style="max-width:420px;text-align:center;padding:50px 40px;">
+    <button class="modal-close" onclick="closeModal('login-modal')">✕</button>
+    <div style="font-size:3rem;margin-bottom:18px;">🐾</div>
+    <h2 style="margin-bottom:10px;">Sign In</h2>
+    <p style="color:var(--text-light);margin-bottom:30px;font-size:0.95rem;">
+      Sign in to save your progress or access the admin panel.
+    </p>
+    <button class="google-btn" onclick="handleGoogleSignIn()">
+      <svg class="google-logo" viewBox="0 0 48 48">
+        <path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.6 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 2.9l5.7-5.7C34 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"/>
+        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3.1 0 5.8 1.1 8 2.9l5.7-5.7C34 6.5 29.3 4 24 4 16.3 4 9.7 8.4 6.3 14.7z"/>
+        <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.3 35.5 26.8 36 24 36c-5.2 0-9.6-3.3-11.3-8H6.2C9.6 35.5 16.3 44 24 44z"/>
+        <path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.3 5.6l6.2 5.2C36.9 40 44 35 44 24c0-1.3-.1-2.6-.4-3.9z"/>
+      </svg>
+      Continue with Google
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════ EDIT CONTENT MODAL ══════════════ -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('edit-modal')">✕</button>
+    <h2 id="edit-modal-title">Edit Content</h2>
+    <div class="form-group">
+      <label class="form-label" id="edit-field-label">Text</label>
+      <textarea class="form-textarea" id="edit-textarea" style="min-height:160px;"></textarea>
+    </div>
+    <div id="edit-extra-field" style="display:none;">
+      <div class="form-group">
+        <label class="form-label" id="edit-extra-label">Subtitle</label>
+        <input type="text" class="form-input" id="edit-input2" />
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:flex-end;">
+      <button class="btn btn-outline" onclick="closeModal('edit-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEdit()" id="save-edit-btn">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ TOAST ══════════════ -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════ FIREBASE + PAGE SCRIPTS ══════════════ -->
+<script src="firebase-config.js"></script>
+<script>
+  /* ── Auth UI callback ── */
+  function onAuthUpdate(user) {
+    const loginBtn   = document.getElementById('nav-login-btn');
+    const userInfo   = document.getElementById('nav-user-info');
+    const adminLink  = document.getElementById('nav-admin-link');
+    const mobileAdm  = document.getElementById('mobile-admin-link');
+    const body       = document.body;
+
+    if (user) {
+      loginBtn.style.display  = 'none';
+      userInfo.style.display  = 'flex';
+      document.getElementById('nav-avatar').src = user.photoURL || '';
+      document.getElementById('nav-username').textContent = user.displayName?.split(' ')[0] || 'User';
+    } else {
+      loginBtn.style.display  = 'flex';
+      userInfo.style.display  = 'none';
+    }
+
+    if (isAdmin(user)) {
+      adminLink.style.display = 'block';
+      if (mobileAdm) mobileAdm.style.display = 'block';
+      body.classList.add('admin-logged');
+    } else {
+      adminLink.style.display = 'none';
+      if (mobileAdm) mobileAdm.style.display = 'none';
+      body.classList.remove('admin-logged');
+    }
+  }
+
+  /* ── Load site content from Firestore ── */
+  async function loadSiteContent() {
+    try {
+      const doc = await db.collection('siteContent').doc('main').get();
+      if (!doc.exists) return;
+      const d = doc.data();
+
+      if (d.heroImageURL)  document.getElementById('hero-section').style.backgroundImage = `url('${d.heroImageURL}')`;
+      if (d.heroTitle)     document.getElementById('hero-title').innerHTML = d.heroTitle;
+      if (d.heroSubtitle)  document.getElementById('hero-subtitle').textContent = d.heroSubtitle;
+      if (d.whyText)       document.getElementById('why-text').innerHTML = d.whyText;
+      if (d.mottoText)     document.getElementById('motto-text').textContent = d.mottoText;
+      if (d.mottoSub)      document.getElementById('motto-sub').textContent = d.mottoSub;
+      if (d.introText)     document.getElementById('intro-text').innerHTML = d.introText;
+      if (d.dogImageURL)   document.getElementById('featured-dog-img').src = d.dogImageURL;
+    } catch (e) { console.error('Content load error:', e); }
+  }
+
+  loadSiteContent();
+
+  /* ── Auth actions ── */
+  function openLoginModal() { document.getElementById('login-modal').classList.add('active'); }
+
+  async function handleGoogleSignIn() {
+    try {
+      await signInGoogle();
+      closeModal('login-modal');
+      showToast('Welcome! You\'re signed in 🐾', 'success');
+    } catch (e) { showToast('Sign-in failed. Please try again.', 'error'); }
+  }
+
+  async function handleSignOut() {
+    await signOutUser();
+    showToast('Signed out successfully.', 'info');
+  }
+
+  function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+  /* ── Close modals on overlay click ── */
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) el.classList.remove('active'); });
+  });
+
+  /* ── Mobile menu ── */
+  function toggleMobileMenu() {
+    document.getElementById('mobile-menu').classList.toggle('open');
+  }
+
+  /* ── Hero image upload ── */
+  function triggerHeroUpload() { document.getElementById('hero-img-input').click(); }
+
+  async function uploadHeroImage(input) {
+    if (!input.files[0]) return;
+    const file = input.files[0];
+    const progressWrap = document.getElementById('hero-upload-progress');
+    const progressBar  = document.getElementById('hero-progress-bar');
+    progressWrap.style.display = 'block';
+
+    try {
+      const url = await uploadFile(file, `siteImages/hero_${Date.now()}`, pct => {
+        progressBar.style.width = pct + '%';
+      });
+      document.getElementById('hero-section').style.backgroundImage = `url('${url}')`;
+      await db.collection('siteContent').doc('main').set({ heroImageURL: url }, { merge: true });
+      showToast('Hero image updated! ✨', 'success');
+    } catch (e) { showToast('Upload failed. Check Firebase Storage rules.', 'error'); }
+    finally { progressWrap.style.display = 'none'; progressBar.style.width = '0%'; }
+  }
+
+  /* ── Featured dog image upload ── */
+  function triggerDogUpload() {
+    if (!isAdmin(currentUser)) return;
+    document.getElementById('dog-img-input').click();
+  }
+
+  async function uploadDogImage(input) {
+    if (!input.files[0]) return;
+    const file = input.files[0];
+    try {
+      const url = await uploadFile(file, `siteImages/dog_${Date.now()}`);
+      document.getElementById('featured-dog-img').src = url;
+      await db.collection('siteContent').doc('main').set({ dogImageURL: url }, { merge: true });
+      showToast('Dog photo updated! 🐕', 'success');
+    } catch (e) { showToast('Upload failed.', 'error'); }
+  }
+
+  /* ── Edit modal logic ── */
+  let currentEditKey = null;
+
+  const editConfig = {
+    whyText: {
+      title: 'Edit "Why We Help"',
+      label: 'Story Text (use \\n\\n for paragraph breaks)',
+      field: 'why-text',
+      key:   'whyText',
+      isHtml: true,
+      extra:  false
+    },
+    motto: {
+      title: 'Edit Motto',
+      label: 'Main Motto',
+      field: 'motto-text',
+      key:   'mottoText',
+      isHtml: false,
+      extra:  true,
+      extraLabel: 'Subtitle',
+      extraField: 'motto-sub',
+      extraKey:   'mottoSub'
+    },
+    intro: {
+      title: 'Edit Animal Introduction',
+      label: 'Introduction Text',
+      field: 'intro-text',
+      key:   'introText',
+      isHtml: true,
+      extra:  false
+    }
+  };
+
+  function openEditModal(key) {
+    const cfg = editConfig[key];
+    if (!cfg) return;
+    currentEditKey = key;
+
+    document.getElementById('edit-modal-title').textContent = cfg.title;
+    document.getElementById('edit-field-label').textContent = cfg.label;
+
+    const el = document.getElementById(cfg.field);
+    document.getElementById('edit-textarea').value = cfg.isHtml
+      ? el.innerHTML.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '')
+      : el.textContent;
+
+    const extraWrap = document.getElementById('edit-extra-field');
+    if (cfg.extra) {
+      extraWrap.style.display = 'block';
+      document.getElementById('edit-extra-label').textContent = cfg.extraLabel;
+      document.getElementById('edit-input2').value = document.getElementById(cfg.extraField).textContent;
+    } else {
+      extraWrap.style.display = 'none';
+    }
+
+    document.getElementById('edit-modal').classList.add('active');
+  }
+
+  async function saveEdit() {
+    if (!currentEditKey) return;
+    const cfg = editConfig[currentEditKey];
+    const text = document.getElementById('edit-textarea').value.trim();
+    const saveBtn = document.getElementById('save-edit-btn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+
+    const dataToSave = { [cfg.key]: text };
+
+    const el = document.getElementById(cfg.field);
+    if (cfg.isHtml) {
+      el.innerHTML = text.replace(/\n\n/g, '<br><br>');
+    } else {
+      el.textContent = text;
+    }
+
+    if (cfg.extra) {
+      const extra = document.getElementById('edit-input2').value.trim();
+      dataToSave[cfg.extraKey] = extra;
+      document.getElementById(cfg.extraField).textContent = extra;
+    }
+
+    try {
+      await db.collection('siteContent').doc('main').set(dataToSave, { merge: true });
+      showToast('Content saved! ✅', 'success');
+      closeModal('edit-modal');
+    } catch (e) { showToast('Save failed. Check Firestore rules.', 'error'); }
+    finally { saveBtn.disabled = false; saveBtn.textContent = 'Save Changes'; }
+  }
+</script>
+
+</body>
+</html>

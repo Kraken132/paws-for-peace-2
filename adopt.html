@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Adopt — Paws for Peace</title>
+  <meta name="description" content="Browse our rescue dogs available for adoption in Bangkok." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+  <style>
+    .animals-section { padding: 50px 5% 90px; }
+    .results-count { text-align:center; color:var(--text-light); font-size:0.9rem; margin-bottom:30px; }
+    .admin-add-bar {
+      display: none;
+      justify-content: flex-end;
+      max-width: 1200px;
+      margin: 0 auto 25px;
+    }
+    .admin-logged .admin-add-bar { display: flex; }
+    .admin-card-actions { display:none; gap:8px; padding: 0 22px 15px; }
+    .admin-logged .admin-card-actions { display: flex; }
+    .animal-card-footer { margin-top: auto; }
+
+    /* ── Clickable card ── */
+    .animal-card { cursor: pointer; }
+    .animal-card .click-hint {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: var(--text-light);
+      padding: 0 22px 14px;
+    }
+
+    /* ── Detail Modal ── */
+    .detail-modal {
+      max-width: 860px;
+      padding: 0;
+      overflow: hidden;
+    }
+    .detail-layout {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      min-height: 480px;
+    }
+    .detail-photo-col {
+      position: relative;
+      background: #111;
+    }
+    .detail-photo-col img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      min-height: 340px;
+    }
+    .detail-photo-badge {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+    }
+    .detail-info-col {
+      padding: 36px 32px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+      max-height: 90vh;
+    }
+    .detail-close {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      background: rgba(0,0,0,0.5);
+      border: none;
+      color: #fff;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+      z-index: 10;
+    }
+    .detail-close:hover { background: rgba(0,0,0,0.8); }
+    .detail-name {
+      font-size: 1.9rem;
+      font-weight: 800;
+      color: var(--secondary);
+      line-height: 1.15;
+    }
+    .detail-tags { display: flex; flex-wrap: wrap; gap: 7px; }
+    .detail-desc {
+      color: var(--text-light);
+      font-size: 0.95rem;
+      line-height: 1.85;
+      flex: 1;
+    }
+    .detail-video-wrap {
+      border-radius: 10px;
+      overflow: hidden;
+      background: #000;
+    }
+    .detail-video {
+      width: 100%;
+      height: 200px;
+      display: block;
+      object-fit: cover;
+    }
+    .detail-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding-top: 4px;
+    }
+    .detail-adopted-msg {
+      background: #fff3f3;
+      border-radius: 10px;
+      padding: 14px 18px;
+      color: #B71C1C;
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    @media (max-width: 680px) {
+      .detail-layout { grid-template-columns: 1fr; }
+      .detail-photo-col img { min-height: 260px; max-height: 300px; }
+      .detail-info-col { padding: 24px 20px 20px; }
+      .detail-name { font-size: 1.5rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ NAV ══════════════ -->
+<nav>
+  <a href="index.html" class="nav-logo">🐾 <span>Paws</span> for Peace</a>
+  <ul class="nav-center">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="adopt.html" class="active">Adopt</a></li>
+    <li><a href="apply.html">Apply</a></li>
+    <li><a href="admin.html" id="nav-admin-link" style="display:none;">Admin</a></li>
+  </ul>
+  <div class="nav-right">
+    <div class="user-info-nav" id="nav-user-info">
+      <img class="user-avatar" id="nav-avatar" src="" alt="Avatar" />
+      <span id="nav-username"></span>
+      <button class="btn btn-ghost btn-sm" onclick="handleSignOut()">Sign out</button>
+    </div>
+    <button class="btn btn-primary btn-sm" id="nav-login-btn" onclick="openLoginModal()">Sign in</button>
+    <button class="hamburger" onclick="toggleMobileMenu()"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobile-menu">
+  <a href="index.html">🏠 Home</a>
+  <a href="adopt.html">🐕 Adopt</a>
+  <a href="apply.html">📋 Apply</a>
+  <a href="admin.html" id="mobile-admin-link" style="display:none;">⚙️ Admin</a>
+</div>
+
+<!-- ══════════════ PAGE HERO ══════════════ -->
+<div class="page-hero">
+  <h1>Find Your Forever Friend 🐾</h1>
+  <p>Browse our rescue dogs available for adoption in Bangkok</p>
+</div>
+
+<!-- ══════════════ SEARCH & FILTER ══════════════ -->
+<div class="search-filter-bar">
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" class="search-input" id="search-input" placeholder="Search by name…" oninput="filterAnimals()" />
+  </div>
+
+  <select class="filter-select" id="filter-age" onchange="filterAnimals()">
+    <option value="">🎂 All Ages</option>
+    <option value="puppy">Puppy (under 1 yr)</option>
+    <option value="young">Young (1–3 yrs)</option>
+    <option value="adult">Adult (3–7 yrs)</option>
+    <option value="senior">Senior (7+ yrs)</option>
+  </select>
+
+  <select class="filter-select" id="filter-personality" onchange="filterAnimals()">
+    <option value="">💛 All Personalities</option>
+    <option value="playful">Playful</option>
+    <option value="calm">Calm</option>
+    <option value="energetic">Energetic</option>
+    <option value="gentle">Gentle</option>
+    <option value="friendly">Friendly</option>
+    <option value="protective">Protective</option>
+    <option value="shy">Shy</option>
+  </select>
+
+  <select class="filter-select" id="filter-status" onchange="filterAnimals()">
+    <option value="">All Status</option>
+    <option value="available">Available</option>
+    <option value="adopted">Adopted</option>
+  </select>
+
+  <button class="btn btn-outline btn-sm" onclick="clearFilters()">✕ Clear</button>
+</div>
+
+<!-- ══════════════ ANIMALS SECTION ══════════════ -->
+<section class="animals-section">
+  <!-- Admin: Add animal button -->
+  <div class="admin-add-bar">
+    <button class="btn btn-primary" onclick="openAnimalModal()">＋ Add Animal</button>
+  </div>
+
+  <p class="results-count" id="results-count"></p>
+
+  <!-- Loading -->
+  <div class="loading-state" id="loading-state">
+    <div class="spinner"></div>
+    <p>Loading available dogs…</p>
+  </div>
+
+  <!-- Grid -->
+  <div class="animals-grid" id="animals-grid" style="display:none;"></div>
+
+  <!-- Empty state -->
+  <div class="empty-state" id="empty-state" style="display:none;">
+    <span class="empty-icon">🐾</span>
+    <h3>No dogs found</h3>
+    <p>Try different search or filter options.</p>
+  </div>
+</section>
+
+<!-- ══════════════ FOOTER ══════════════ -->
+<footer>
+  <p>🐾 &copy; 2026 <strong>Paws for Peace</strong> — Bangkok, Thailand &nbsp;|&nbsp;
+    <a href="https://www.instagram.com/adoptme.bkk" target="_blank">@adoptme.bkk</a>
+  </p>
+</footer>
+
+<!-- ══════════════ DETAIL MODAL ══════════════ -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal detail-modal">
+
+    <!-- Close button sits over the photo -->
+    <button class="detail-close" onclick="closeDetailModal()" title="Close">✕</button>
+
+    <div class="detail-layout">
+
+      <!-- LEFT — Photo -->
+      <div class="detail-photo-col">
+        <img id="detail-img"
+             src=""
+             alt=""
+             onerror="this.src='https://images.unsplash.com/photo-1558788353-f76d92427f16?w=700&q=80'" />
+        <span class="animal-status-badge detail-photo-badge" id="detail-status-badge"></span>
+      </div>
+
+      <!-- RIGHT — Info -->
+      <div class="detail-info-col">
+        <div class="detail-name" id="detail-name"></div>
+
+        <div class="detail-tags" id="detail-tags"></div>
+
+        <p class="detail-desc" id="detail-desc"></p>
+
+        <!-- Video (shown only if available) -->
+        <div class="detail-video-wrap" id="detail-video-wrap" style="display:none;">
+          <video class="detail-video" id="detail-video" controls preload="none">
+            <source id="detail-video-src" src="" />
+          </video>
+        </div>
+
+        <!-- Actions -->
+        <div id="detail-actions" class="detail-actions"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ LOGIN MODAL ══════════════ -->
+<div class="modal-overlay" id="login-modal">
+  <div class="modal" style="max-width:420px;text-align:center;padding:50px 40px;">
+    <button class="modal-close" onclick="closeModal('login-modal')">✕</button>
+    <div style="font-size:3rem;margin-bottom:18px;">🐾</div>
+    <h2 style="margin-bottom:10px;">Sign In</h2>
+    <p style="color:var(--text-light);margin-bottom:30px;font-size:0.95rem;">Sign in to access admin features or save your progress.</p>
+    <button class="google-btn" onclick="handleGoogleSignIn()">
+      <svg class="google-logo" viewBox="0 0 48 48">
+        <path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.6 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 2.9l5.7-5.7C34 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"/>
+        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3.1 0 5.8 1.1 8 2.9l5.7-5.7C34 6.5 29.3 4 24 4 16.3 4 9.7 8.4 6.3 14.7z"/>
+        <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.3 35.5 26.8 36 24 36c-5.2 0-9.6-3.3-11.3-8H6.2C9.6 35.5 16.3 44 24 44z"/>
+        <path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.3 5.6l6.2 5.2C36.9 40 44 35 44 24c0-1.3-.1-2.6-.4-3.9z"/>
+      </svg>
+      Continue with Google
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════ ADD / EDIT ANIMAL MODAL ══════════════ -->
+<div class="modal-overlay" id="animal-modal">
+  <div class="modal" style="max-width:620px;">
+    <button class="modal-close" onclick="closeModal('animal-modal')">✕</button>
+    <h2 id="animal-modal-title">Add New Animal</h2>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Animal Name *</label>
+        <input type="text" class="form-input" id="a-name" placeholder="e.g. Buddy" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Age (e.g. "2 years") *</label>
+        <input type="text" class="form-input" id="a-age" placeholder="e.g. 2 years" required />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Age Category *</label>
+      <select class="form-select" id="a-age-cat">
+        <option value="puppy">Puppy (under 1 year)</option>
+        <option value="young">Young (1–3 years)</option>
+        <option value="adult">Adult (3–7 years)</option>
+        <option value="senior">Senior (7+ years)</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Weight (e.g. "15 kg")</label>
+        <input type="text" class="form-input" id="a-weight" placeholder="e.g. 15 kg" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="a-status">
+          <option value="available">Available</option>
+          <option value="adopted">Adopted</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Personalities (select all that apply)</label>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;" id="personality-checkboxes">
+        <label class="checkbox-row"><input type="checkbox" name="personality" value="playful"/> Playful</label>
+        <label class="checkbox-row"><input type="checkbox" name="personality" value="calm"/> Calm</label>
+        <label class="checkbox-row"><input type="checkbox" name="personality" value="energetic"/> Energetic</label>
+        <label class="checkbox-row"><input type="checkbox" name="personality" value="gentle"/> Gentle</label>
+        <label class="checkbox-row"><input type="checkbox" name="personality" value="friendly"/> Friendly</label>
+        <label class="checkbox-row"><input type="checkbox" name="personality" value="protective"/> Protective</label>
+        <label class="checkbox-row"><input type="checkbox" name="personality" value="shy"/> Shy</label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Description *</label>
+      <textarea class="form-textarea" id="a-desc" placeholder="Tell us about this dog's story, personality, and what they're looking for in a home…"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Animal Photo</label>
+      <input type="file" id="a-photo-input" accept="image/*" onchange="previewPhoto(this)" />
+      <div id="a-photo-preview" style="margin-top:10px;display:none;">
+        <img id="a-photo-img" src="" style="width:100%;height:180px;object-fit:cover;border-radius:8px;" />
+      </div>
+      <div class="upload-progress" id="photo-progress"><div class="upload-progress-bar" id="photo-bar"></div></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Vlog Video (shows animal's personality)</label>
+      <input type="file" id="a-video-input" accept="video/*" onchange="previewVideo(this)" />
+      <div id="a-video-preview" style="margin-top:10px;display:none;">
+        <video id="a-video-el" controls style="width:100%;height:180px;border-radius:8px;object-fit:cover;"></video>
+      </div>
+      <div class="upload-progress" id="video-progress"><div class="upload-progress-bar" id="video-bar"></div></div>
+    </div>
+
+    <div style="display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap;">
+      <button class="btn btn-outline" onclick="closeModal('animal-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAnimal()" id="save-animal-btn">Save Animal</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ DELETE CONFIRM MODAL ══════════════ -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal" style="max-width:400px;text-align:center;">
+    <button class="modal-close" onclick="closeModal('delete-modal')">✕</button>
+    <div style="font-size:2.5rem;margin-bottom:15px;">⚠️</div>
+    <h2 style="margin-bottom:12px;">Delete Animal?</h2>
+    <p style="color:var(--text-light);margin-bottom:28px;">This will permanently remove this animal's profile. This cannot be undone.</p>
+    <div style="display:flex;gap:12px;justify-content:center;">
+      <button class="btn btn-outline" onclick="closeModal('delete-modal')">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDelete()" id="confirm-delete-btn">Yes, Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════ SCRIPTS ══════════════ -->
+<script src="firebase-config.js"></script>
+<script>
+  let allAnimals = [];
+  let editingId  = null;
+  let deletingId = null;
+  let existingPhotoURL = '';
+  let existingVideoURL = '';
+
+  /* ── Auth callback ── */
+  function onAuthUpdate(user) {
+    const loginBtn = document.getElementById('nav-login-btn');
+    const userInfo = document.getElementById('nav-user-info');
+    const adminLink = document.getElementById('nav-admin-link');
+    const mobileAdm = document.getElementById('mobile-admin-link');
+
+    if (user) {
+      loginBtn.style.display = 'none';
+      userInfo.style.display = 'flex';
+      document.getElementById('nav-avatar').src = user.photoURL || '';
+      document.getElementById('nav-username').textContent = user.displayName?.split(' ')[0] || 'User';
+    } else {
+      loginBtn.style.display = 'flex';
+      userInfo.style.display = 'none';
+    }
+
+    const admin = isAdmin(user);
+    adminLink.style.display = admin ? 'block' : 'none';
+    if (mobileAdm) mobileAdm.style.display = admin ? 'block' : 'none';
+    admin ? document.body.classList.add('admin-logged') : document.body.classList.remove('admin-logged');
+  }
+
+  /* ── Load animals from Firestore ── */
+  function loadAnimals() {
+    db.collection('animals')
+      .orderBy('createdAt', 'desc')
+      .onSnapshot(snap => {
+        allAnimals = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        document.getElementById('loading-state').style.display = 'none';
+        document.getElementById('animals-grid').style.display = 'grid';
+        filterAnimals();
+      }, err => {
+        console.error(err);
+        document.getElementById('loading-state').innerHTML = '<p>Failed to load animals. Check Firestore setup.</p>';
+      });
+  }
+
+  /* ── Render cards ── */
+  function renderAnimals(list) {
+    const grid = document.getElementById('animals-grid');
+    const empty = document.getElementById('empty-state');
+    const count = document.getElementById('results-count');
+
+    count.textContent = `${list.length} dog${list.length !== 1 ? 's' : ''} found`;
+
+    if (list.length === 0) {
+      grid.style.display = 'none';
+      empty.style.display = 'block';
+      return;
+    }
+
+    empty.style.display = 'none';
+    grid.style.display  = 'grid';
+
+    grid.innerHTML = list.map(a => {
+      const personalities = (a.personalities || []).map(p =>
+        `<span class="tag tag-personality">${capitalize(p)}</span>`
+      ).join('');
+
+      const resolvedStatus = a.status || 'available';
+      const statusClass = resolvedStatus === 'adopted' ? 'badge-adopted' : 'badge-available';
+      const statusText  = resolvedStatus === 'adopted' ? 'Adopted' : 'Available';
+      const hasVideo    = !!a.videoURL;
+
+      return `
+        <div class="animal-card"
+             data-id="${a.id}"
+             data-age-cat="${a.ageCategory || ''}"
+             data-personalities="${(a.personalities||[]).join(',')}"
+             onclick="openDetailModal('${a.id}')">
+
+          <div class="animal-photo-wrap">
+            <img class="animal-photo"
+                 src="${a.photoURL || 'https://images.unsplash.com/photo-1558788353-f76d92427f16?w=600&q=60'}"
+                 alt="${escHtml(a.name)}"
+                 loading="lazy"
+                 onerror="this.src='https://images.unsplash.com/photo-1558788353-f76d92427f16?w=600&q=60'" />
+            <span class="animal-status-badge ${statusClass}">${statusText}</span>
+          </div>
+
+          <div class="animal-card-body">
+            <div class="animal-name">${escHtml(a.name)}</div>
+            <div class="animal-tags">
+              ${a.ageText ? `<span class="tag tag-info">🎂 ${escHtml(a.ageText)}</span>` : ''}
+              ${a.weight  ? `<span class="tag tag-info">⚖️ ${escHtml(a.weight)}</span>`  : ''}
+              ${personalities}
+            </div>
+            <p class="animal-desc">${escHtml(a.description || '')}</p>
+          </div>
+
+          <!-- hint row -->
+          <div class="click-hint">
+            👆 Tap to see full profile${hasVideo ? ' &amp; video' : ''}
+          </div>
+
+          <!-- Adopt Me button — stop propagation so card click doesn't also fire -->
+          <div class="animal-card-footer" onclick="event.stopPropagation()">
+            ${resolvedStatus !== 'adopted'
+              ? `<a href="apply.html?animal=${encodeURIComponent(a.name)}"
+                    class="btn btn-primary"
+                    style="flex:1;justify-content:center;"
+                    onclick="event.stopPropagation()">🐾 Adopt Me!</a>`
+              : `<span style="color:var(--text-light);font-size:0.85rem;padding:8px 0;">This dog has found a home 🏠</span>`
+            }
+          </div>
+
+          <!-- Admin controls -->
+          <div class="admin-card-actions" onclick="event.stopPropagation()">
+            <button class="btn btn-outline btn-sm" onclick="openEditAnimal('${a.id}')">✏️ Edit</button>
+            <button class="btn btn-danger btn-sm" onclick="openDeleteConfirm('${a.id}')">🗑 Delete</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  /* ── Filter logic ── */
+  function filterAnimals() {
+    const search  = document.getElementById('search-input').value.toLowerCase().trim();
+    const age     = document.getElementById('filter-age').value;
+    const persona = document.getElementById('filter-personality').value;
+    const status  = document.getElementById('filter-status').value;
+
+    const filtered = allAnimals.filter(a => {
+      const animalStatus = a.status || 'available'; // default to available if not set
+      const matchName    = !search  || a.name?.toLowerCase().includes(search);
+      const matchAge     = !age     || a.ageCategory === age;
+      const matchPers    = !persona || (a.personalities || []).includes(persona);
+      const matchStatus  = !status  || animalStatus === status;
+      return matchName && matchAge && matchPers && matchStatus;
+    });
+
+    renderAnimals(filtered);
+  }
+
+  function clearFilters() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('filter-age').value = '';
+    document.getElementById('filter-personality').value = '';
+    document.getElementById('filter-status').value = '';
+    filterAnimals();
+  }
+
+  /* ── Add / Edit Animal Modal ── */
+  function openAnimalModal(animal = null) {
+    editingId        = animal ? animal.id : null;
+    existingPhotoURL = animal?.photoURL || '';
+    existingVideoURL = animal?.videoURL || '';
+
+    document.getElementById('animal-modal-title').textContent = animal ? 'Edit Animal' : 'Add New Animal';
+    document.getElementById('a-name').value    = animal?.name || '';
+    document.getElementById('a-age').value     = animal?.ageText || '';
+    document.getElementById('a-age-cat').value = animal?.ageCategory || 'puppy';
+    document.getElementById('a-weight').value  = animal?.weight || '';
+    document.getElementById('a-status').value  = animal?.status || 'available';
+    document.getElementById('a-desc').value    = animal?.description || '';
+
+    // Reset file inputs & previews
+    document.getElementById('a-photo-input').value = '';
+    document.getElementById('a-video-input').value = '';
+
+    if (animal?.photoURL) {
+      document.getElementById('a-photo-img').src = animal.photoURL;
+      document.getElementById('a-photo-preview').style.display = 'block';
+    } else {
+      document.getElementById('a-photo-preview').style.display = 'none';
+    }
+
+    if (animal?.videoURL) {
+      document.getElementById('a-video-el').src = animal.videoURL;
+      document.getElementById('a-video-preview').style.display = 'block';
+    } else {
+      document.getElementById('a-video-preview').style.display = 'none';
+      document.getElementById('a-video-el').src = '';
+    }
+
+    // Personalities
+    document.querySelectorAll('#personality-checkboxes input[type="checkbox"]').forEach(cb => {
+      cb.checked = (animal?.personalities || []).includes(cb.value);
+    });
+
+    document.getElementById('animal-modal').classList.add('active');
+  }
+
+  function openEditAnimal(id) {
+    const animal = allAnimals.find(a => a.id === id);
+    if (animal) openAnimalModal(animal);
+  }
+
+  function previewPhoto(input) {
+    if (!input.files[0]) return;
+    const url = URL.createObjectURL(input.files[0]);
+    document.getElementById('a-photo-img').src = url;
+    document.getElementById('a-photo-preview').style.display = 'block';
+  }
+
+  function previewVideo(input) {
+    if (!input.files[0]) return;
+    const url = URL.createObjectURL(input.files[0]);
+    document.getElementById('a-video-el').src = url;
+    document.getElementById('a-video-preview').style.display = 'block';
+  }
+
+  async function saveAnimal() {
+    const name = document.getElementById('a-name').value.trim();
+    const desc = document.getElementById('a-desc').value.trim();
+    if (!name || !desc) { showToast('Name and description are required.', 'error'); return; }
+
+    const saveBtn = document.getElementById('save-animal-btn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+
+    try {
+      let photoURL = existingPhotoURL;
+      let videoURL = existingVideoURL;
+
+      // Upload photo if new one selected
+      const photoFile = document.getElementById('a-photo-input').files[0];
+      if (photoFile) {
+        document.getElementById('photo-progress').style.display = 'block';
+        photoURL = await uploadFile(photoFile, `animals/photo_${Date.now()}_${photoFile.name}`, pct => {
+          document.getElementById('photo-bar').style.width = pct + '%';
+        });
+        document.getElementById('photo-progress').style.display = 'none';
+      }
+
+      // Upload video if new one selected
+      const videoFile = document.getElementById('a-video-input').files[0];
+      if (videoFile) {
+        document.getElementById('video-progress').style.display = 'block';
+        showToast('Uploading video… this may take a moment ⏳', 'info');
+        videoURL = await uploadFile(videoFile, `animals/video_${Date.now()}_${videoFile.name}`, pct => {
+          document.getElementById('video-bar').style.width = pct + '%';
+        });
+        document.getElementById('video-progress').style.display = 'none';
+      }
+
+      const personalities = Array.from(
+        document.querySelectorAll('#personality-checkboxes input:checked')
+      ).map(cb => cb.value);
+
+      const data = {
+        name:        name,
+        ageText:     document.getElementById('a-age').value.trim(),
+        ageCategory: document.getElementById('a-age-cat').value,
+        weight:      document.getElementById('a-weight').value.trim(),
+        status:      document.getElementById('a-status').value,
+        personalities,
+        description: desc,
+        photoURL,
+        videoURL,
+        updatedAt:   firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      if (editingId) {
+        await db.collection('animals').doc(editingId).update(data);
+        showToast('Animal updated! ✅', 'success');
+      } else {
+        data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        await db.collection('animals').doc().set(data);
+        showToast('Animal added! 🐾', 'success');
+      }
+
+      closeModal('animal-modal');
+    } catch (e) {
+      console.error(e);
+      showToast('Save failed: ' + e.message, 'error');
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Save Animal';
+    }
+  }
+
+  /* ── Delete Animal ── */
+  function openDeleteConfirm(id) { deletingId = id; document.getElementById('delete-modal').classList.add('active'); }
+
+  async function confirmDelete() {
+    if (!deletingId) return;
+    const btn = document.getElementById('confirm-delete-btn');
+    btn.disabled = true; btn.textContent = 'Deleting…';
+    try {
+      await db.collection('animals').doc(deletingId).delete();
+      showToast('Animal removed.', 'info');
+      closeModal('delete-modal');
+    } catch (e) { showToast('Delete failed.', 'error'); }
+    finally { btn.disabled = false; btn.textContent = 'Yes, Delete'; deletingId = null; }
+  }
+
+  /* ── Detail Modal ── */
+  function openDetailModal(id) {
+    const a = allAnimals.find(x => x.id === id);
+    if (!a) return;
+
+    const resolvedStatus = a.status || 'available';
+    const isAdopted      = resolvedStatus === 'adopted';
+    const PLACEHOLDER    = 'https://images.unsplash.com/photo-1558788353-f76d92427f16?w=700&q=80';
+
+    /* Photo */
+    const img = document.getElementById('detail-img');
+    img.src = a.photoURL || PLACEHOLDER;
+    img.alt = a.name || '';
+
+    /* Status badge */
+    const badge = document.getElementById('detail-status-badge');
+    badge.textContent  = isAdopted ? 'Adopted' : 'Available';
+    badge.className    = `animal-status-badge detail-photo-badge ${isAdopted ? 'badge-adopted' : 'badge-available'}`;
+
+    /* Name */
+    document.getElementById('detail-name').textContent = a.name || '';
+
+    /* Tags */
+    const tagHTML = [
+      a.ageText  ? `<span class="tag tag-info">🎂 ${escHtml(a.ageText)}</span>` : '',
+      a.weight   ? `<span class="tag tag-info">⚖️ ${escHtml(a.weight)}</span>`  : '',
+      ...(a.personalities || []).map(p => `<span class="tag tag-personality">${capitalize(p)}</span>`)
+    ].join('');
+    document.getElementById('detail-tags').innerHTML = tagHTML;
+
+    /* Description (full, no clamp) */
+    document.getElementById('detail-desc').textContent = a.description || '';
+
+    /* Video */
+    const videoWrap = document.getElementById('detail-video-wrap');
+    const videoEl   = document.getElementById('detail-video');
+    const videoSrc  = document.getElementById('detail-video-src');
+    if (a.videoURL) {
+      videoSrc.src = a.videoURL;
+      videoEl.load();
+      videoWrap.style.display = 'block';
+    } else {
+      videoEl.pause();
+      videoSrc.src = '';
+      videoWrap.style.display = 'none';
+    }
+
+    /* Actions */
+    document.getElementById('detail-actions').innerHTML = isAdopted
+      ? `<div class="detail-adopted-msg">🏠 This dog has already found a forever home!</div>`
+      : `<a href="apply.html?animal=${encodeURIComponent(a.name)}"
+            class="btn btn-primary btn-lg"
+            style="flex:1;justify-content:center;">
+           🐾 Adopt Me!
+         </a>
+         <button class="btn btn-outline btn-lg" onclick="closeDetailModal()">Close</button>`;
+
+    /* Open overlay */
+    document.getElementById('detail-modal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeDetailModal() {
+    const overlay = document.getElementById('detail-modal');
+    overlay.classList.remove('active');
+    document.body.style.overflow = '';
+    /* pause any playing video */
+    const v = document.getElementById('detail-video');
+    if (v) v.pause();
+  }
+
+  /* ── Utilities ── */
+  function capitalize(str) { return str ? str.charAt(0).toUpperCase() + str.slice(1) : ''; }
+  function escHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function openLoginModal()  { document.getElementById('login-modal').classList.add('active'); }
+  function closeModal(id)    { document.getElementById(id).classList.remove('active'); }
+  function toggleMobileMenu(){ document.getElementById('mobile-menu').classList.toggle('open'); }
+
+  async function handleGoogleSignIn() {
+    try { await signInGoogle(); closeModal('login-modal'); showToast('Signed in! 🐾', 'success'); }
+    catch(e) { showToast('Sign-in failed.', 'error'); }
+  }
+
+  async function handleSignOut() { await signOutUser(); showToast('Signed out.', 'info'); }
+
+  document.querySelectorAll('.modal-overlay').forEach(el =>
+    el.addEventListener('click', e => {
+      if (e.target === el) {
+        if (el.id === 'detail-modal') { closeDetailModal(); }
+        else { el.classList.remove('active'); }
+      }
+    })
+  );
+
+  /* ── Init ── */
+  loadAnimals();
+</script>
+</body>
+</html>

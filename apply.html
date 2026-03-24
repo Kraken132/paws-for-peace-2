@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Apply to Adopt — Paws for Peace</title>
+  <meta name="description" content="Apply to adopt a rescue dog from Paws for Peace in Bangkok." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+  <style>
+    .apply-section { padding: 70px 5%; }
+    .form-note { font-size:0.82rem; color:var(--text-light); margin-top:5px; }
+    .required-mark { color: var(--primary); font-weight:700; }
+    .contact-card {
+      background: var(--white);
+      border-radius: var(--border-radius);
+      padding: 35px;
+      box-shadow: var(--card-shadow);
+    }
+    .instagram-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+      color: var(--white);
+      padding: 12px 22px;
+      border-radius: 50px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: var(--transition);
+    }
+    .instagram-link:hover { opacity: 0.88; transform: translateY(-2px); }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════ NAV ══════════════ -->
+<nav>
+  <a href="index.html" class="nav-logo">🐾 <span>Paws</span> for Peace</a>
+  <ul class="nav-center">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="adopt.html">Adopt</a></li>
+    <li><a href="apply.html" class="active">Apply</a></li>
+    <li><a href="admin.html" id="nav-admin-link" style="display:none;">Admin</a></li>
+  </ul>
+  <div class="nav-right">
+    <div class="user-info-nav" id="nav-user-info">
+      <img class="user-avatar" id="nav-avatar" src="" alt="Avatar" />
+      <span id="nav-username"></span>
+      <button class="btn btn-ghost btn-sm" onclick="handleSignOut()">Sign out</button>
+    </div>
+    <button class="btn btn-primary btn-sm" id="nav-login-btn" onclick="openLoginModal()">Sign in</button>
+    <button class="hamburger" onclick="toggleMobileMenu()"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobile-menu">
+  <a href="index.html">🏠 Home</a>
+  <a href="adopt.html">🐕 Adopt</a>
+  <a href="apply.html">📋 Apply</a>
+  <a href="admin.html" id="mobile-admin-link" style="display:none;">⚙️ Admin</a>
+</div>
+
+<!-- ══════════════ PAGE HERO ══════════════ -->
+<div class="page-hero">
+  <h1>Adoption Application 📋</h1>
+  <p>Ready to give a rescue dog their forever home? Fill in the form below.</p>
+</div>
+
+<!-- ══════════════ APPLICATION + CONTACT ══════════════ -->
+<section class="apply-section">
+  <div class="apply-grid">
+
+    <!-- LEFT: Application Form -->
+    <div>
+      <span class="section-label">Step 1</span>
+      <h2 class="section-title">Tell Us About Yourself</h2>
+      <div class="section-divider"></div>
+
+      <div class="form-card">
+        <!-- Success message (hidden by default) -->
+        <div class="success-box" id="success-box">
+          <span class="success-icon">🎉</span>
+          <h3>Application Submitted!</h3>
+          <p>Thank you for applying! We'll review your application and reach out within 2–3 days via email.</p>
+          <div style="margin-top:20px;">
+            <a href="adopt.html" class="btn btn-primary">Browse More Dogs</a>
+          </div>
+        </div>
+
+        <form id="adoption-form" onsubmit="submitApplication(event)">
+          <!-- Name + Email -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Full Name <span class="required-mark">*</span></label>
+              <input type="text" class="form-input" id="f-name" placeholder="Your full name" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email <span class="required-mark">*</span></label>
+              <input type="email" class="form-input" id="f-email" placeholder="your@email.com" required />
+            </div>
+          </div>
+
+          <!-- Phone + Address -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Phone Number <span class="required-mark">*</span></label>
+              <input type="tel" class="form-input" id="f-phone" placeholder="+66 XX-XXX-XXXX" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Address <span class="required-mark">*</span></label>
+              <input type="text" class="form-input" id="f-address" placeholder="Bangkok district / area" required />
+            </div>
+          </div>
+
+          <!-- Which dog -->
+          <div class="form-group">
+            <label class="form-label">Which dog would you like to adopt? <span class="required-mark">*</span></label>
+            <input type="text" class="form-input" id="f-animal" placeholder="Dog's name (from the Adopt page)" required />
+            <p class="form-note">Not sure? Visit the <a href="adopt.html" style="color:var(--primary);">Adopt page</a> to browse available dogs.</p>
+          </div>
+
+          <!-- Reason -->
+          <div class="form-group">
+            <label class="form-label">Why do you want to adopt this dog? <span class="required-mark">*</span></label>
+            <textarea class="form-textarea" id="f-reason" placeholder="Tell us about your motivation and what kind of home you can provide…" required></textarea>
+          </div>
+
+          <!-- Experience -->
+          <div class="form-group">
+            <label class="form-label">Pet ownership experience <span class="required-mark">*</span></label>
+            <textarea class="form-textarea" id="f-experience" placeholder="Tell us about any previous or current pets, how you care for them, or if this would be your first pet…" required></textarea>
+          </div>
+
+          <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:20px;">
+            Fields marked <span class="required-mark">*</span> are required.
+            Login is not required to submit, but signing in lets you track your application.
+          </p>
+
+          <button type="submit" class="btn btn-primary btn-lg" id="submit-btn" style="width:100%;justify-content:center;">
+            Submit Application 🐾
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- RIGHT: Contact Info -->
+    <div>
+      <span class="section-label">Contact Us</span>
+      <h2 class="section-title">Get in Touch</h2>
+      <div class="section-divider"></div>
+
+      <div class="contact-card">
+        <div class="contact-items">
+
+          <div class="contact-item">
+            <div class="contact-icon">📍</div>
+            <div>
+              <h4>Our Location</h4>
+              <p id="contact-address">Bangkok, Thailand<br />
+                <em style="font-size:0.85rem;color:var(--text-light);">(Full address coming soon)</em>
+              </p>
+            </div>
+          </div>
+
+          <div class="contact-item">
+            <div class="contact-icon">📞</div>
+            <div>
+              <h4>Phone</h4>
+              <a href="tel:+6600000000" id="contact-phone">+66 XX-XXX-XXXX</a>
+              <p style="font-size:0.82rem;color:var(--text-light);margin-top:3px;">Mon–Sun, 9am–6pm (BKK time)</p>
+            </div>
+          </div>
+
+          <div class="contact-item">
+            <div class="contact-icon">📧</div>
+            <div>
+              <h4>Email</h4>
+              <a href="mailto:info@pawsforpeace.org">info@pawsforpeace.org</a>
+            </div>
+          </div>
+
+          <div class="contact-item">
+            <div class="contact-icon" style="background: linear-gradient(135deg,#f09433,#bc1888);color:#fff;">📸</div>
+            <div>
+              <h4>Follow Us</h4>
+              <a href="https://www.instagram.com/adoptme.bkk" target="_blank" class="instagram-link" style="margin-top:8px;display:inline-flex;">
+                📷 @adoptme.bkk
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ GOOGLE MAP ══════════════ -->
+<section class="contact-section">
+  <div class="container">
+    <div style="text-align:center;margin-bottom:40px;">
+      <span class="section-label">Find Us</span>
+      <h2 class="section-title">Our Location in Bangkok</h2>
+      <div class="section-divider center"></div>
+      <p style="color:var(--text-light);font-size:0.95rem;">
+        Come visit us and meet our rescue dogs in person!
+      </p>
+    </div>
+    <div class="map-wrap" style="max-width:900px;margin:0 auto;height:420px;">
+      <iframe id="google-map"
+        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d496049.7800967068!2d100.40479855!3d13.7248936!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x311d6032280d61f3%3A0x10100b25de24820!2sBangkok!5e0!3m2!1sen!2sth!4v1700000000000"
+        allowfullscreen=""
+        loading="lazy"
+        referrerpolicy="no-referrer-when-downgrade"
+        title="Paws for Peace location in Bangkok">
+      </iframe>
+    </div>
+    <p style="text-align:center;color:var(--text-light);font-size:0.85rem;margin-top:16px;">
+      📌 Exact address and pin will be updated soon — contact us for directions!
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════ FOOTER ══════════════ -->
+<footer>
+  <p>🐾 &copy; 2026 <strong>Paws for Peace</strong> — Bangkok, Thailand &nbsp;|&nbsp;
+    <a href="https://www.instagram.com/adoptme.bkk" target="_blank">@adoptme.bkk</a>
+  </p>
+</footer>
+
+<!-- ══════════════ LOGIN MODAL ══════════════ -->
+<div class="modal-overlay" id="login-modal">
+  <div class="modal" style="max-width:420px;text-align:center;padding:50px 40px;">
+    <button class="modal-close" onclick="closeModal('login-modal')">✕</button>
+    <div style="font-size:3rem;margin-bottom:18px;">🐾</div>
+    <h2 style="margin-bottom:10px;">Sign In</h2>
+    <p style="color:var(--text-light);margin-bottom:30px;font-size:0.95rem;">Sign in to track your adoption application.</p>
+    <button class="google-btn" onclick="handleGoogleSignIn()">
+      <svg class="google-logo" viewBox="0 0 48 48">
+        <path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.6 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 2.9l5.7-5.7C34 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.6-.4-3.9z"/>
+        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3.1 0 5.8 1.1 8 2.9l5.7-5.7C34 6.5 29.3 4 24 4 16.3 4 9.7 8.4 6.3 14.7z"/>
+        <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.3 35.5 26.8 36 24 36c-5.2 0-9.6-3.3-11.3-8H6.2C9.6 35.5 16.3 44 24 44z"/>
+        <path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.3 5.6l6.2 5.2C36.9 40 44 35 44 24c0-1.3-.1-2.6-.4-3.9z"/>
+      </svg>
+      Continue with Google
+    </button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════ SCRIPTS ══════════════ -->
+<script src="firebase-config.js"></script>
+<script>
+  /* ── Pre-fill animal name from URL param ── */
+  window.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const animalParam = params.get('animal');
+    if (animalParam) {
+      document.getElementById('f-animal').value = decodeURIComponent(animalParam);
+    }
+    loadSiteContact();
+  });
+
+  /* ── Auth callback ── */
+  function onAuthUpdate(user) {
+    const loginBtn  = document.getElementById('nav-login-btn');
+    const userInfo  = document.getElementById('nav-user-info');
+    const adminLink = document.getElementById('nav-admin-link');
+    const mobileAdm = document.getElementById('mobile-admin-link');
+
+    if (user) {
+      loginBtn.style.display = 'none';
+      userInfo.style.display = 'flex';
+      document.getElementById('nav-avatar').src = user.photoURL || '';
+      document.getElementById('nav-username').textContent = user.displayName?.split(' ')[0] || 'User';
+      // Pre-fill form if logged in
+      if (!document.getElementById('f-name').value)  document.getElementById('f-name').value  = user.displayName || '';
+      if (!document.getElementById('f-email').value) document.getElementById('f-email').value = user.email || '';
+    } else {
+      loginBtn.style.display = 'flex';
+      userInfo.style.display = 'none';
+    }
+
+    const admin = isAdmin(user);
+    adminLink.style.display = admin ? 'block' : 'none';
+    if (mobileAdm) mobileAdm.style.display = admin ? 'block' : 'none';
+  }
+
+  /* ── Load contact info from Firestore (if admin updated it) ── */
+  async function loadSiteContact() {
+    try {
+      const doc = await db.collection('siteContent').doc('main').get();
+      if (!doc.exists) return;
+      const d = doc.data();
+      if (d.contactAddress) document.getElementById('contact-address').innerHTML = d.contactAddress.replace(/\n/g,'<br>');
+      if (d.contactPhone) {
+        const el = document.getElementById('contact-phone');
+        el.textContent = d.contactPhone;
+        el.href = 'tel:' + d.contactPhone.replace(/\s/g,'');
+      }
+      if (d.googleMapsURL) document.getElementById('google-map').src = d.googleMapsURL;
+    } catch(e) { /* silent fail — defaults are shown */ }
+  }
+
+  /* ── Submit Application ── */
+  async function submitApplication(e) {
+    e.preventDefault();
+
+    const name       = document.getElementById('f-name').value.trim();
+    const email      = document.getElementById('f-email').value.trim();
+    const phone      = document.getElementById('f-phone').value.trim();
+    const address    = document.getElementById('f-address').value.trim();
+    const animal     = document.getElementById('f-animal').value.trim();
+    const reason     = document.getElementById('f-reason').value.trim();
+    const experience = document.getElementById('f-experience').value.trim();
+
+    if (!name || !email || !phone || !address || !animal || !reason || !experience) {
+      showToast('Please fill in all required fields.', 'error');
+      return;
+    }
+
+    const submitBtn = document.getElementById('submit-btn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting…';
+
+    try {
+      await db.collection('applications').add({
+        name,
+        email,
+        phone,
+        address,
+        animalWanted: animal,
+        reason,
+        experience,
+        status:       'pending',
+        submittedAt:  firebase.firestore.FieldValue.serverTimestamp(),
+        userId:       currentUser?.uid || null,
+        userEmail:    currentUser?.email || null
+      });
+
+      // Show success message, hide form
+      document.getElementById('adoption-form').style.display = 'none';
+      document.getElementById('success-box').style.display   = 'block';
+      window.scrollTo({ top: document.getElementById('success-box').getBoundingClientRect().top + window.scrollY - 100, behavior: 'smooth' });
+
+    } catch (err) {
+      console.error(err);
+      showToast('Submission failed. Please try again.', 'error');
+      submitBtn.disabled  = false;
+      submitBtn.textContent = 'Submit Application 🐾';
+    }
+  }
+
+  /* ── Utilities ── */
+  function openLoginModal()   { document.getElementById('login-modal').classList.add('active'); }
+  function closeModal(id)     { document.getElementById(id).classList.remove('active'); }
+  function toggleMobileMenu() { document.getElementById('mobile-menu').classList.toggle('open'); }
+
+  async function handleGoogleSignIn() {
+    try { await signInGoogle(); closeModal('login-modal'); showToast('Signed in! 🐾', 'success'); }
+    catch(e) { showToast('Sign-in failed.', 'error'); }
+  }
+
+  async function handleSignOut() { await signOutUser(); showToast('Signed out.', 'info'); }
+
+  document.querySelectorAll('.modal-overlay').forEach(el =>
+    el.addEventListener('click', e => { if (e.target === el) el.classList.remove('active'); })
+  );
+</script>
+</body>
+</html>
